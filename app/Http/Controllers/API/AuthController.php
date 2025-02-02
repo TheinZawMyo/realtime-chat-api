@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
@@ -24,12 +25,12 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        $toke = $user->createToken('realtime-chat')->plainTextToken;
+        $token = $user->createToken('realtime-chat')->plainTextToken;
 
         return response()->json([
             'message' => 'User created successfully',
             'user' => $user,
-            'token' => $toke,
+            'token' => $token,
         ], 201);
     }
 
@@ -50,12 +51,12 @@ class AuthController extends Controller
             ], 401);
         }
 
-        $toke = $user->createToken('realtime-chat')->plainTextToken;
+        $token = $user->createToken('realtime-chat')->plainTextToken;
 
         return response()->json([
             'message' => 'User logged in successfully',
             'user' => $user,
-            'token' => $toke,
+            'token' => $token,
         ], 200);
     }
 
@@ -67,5 +68,41 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'User logged out successfully',
         ], 200);
+    }
+
+    // =============== SEARCH USER ============
+    public function searchUsers(Request $request) 
+    {
+        $authUserId = Auth::id();
+        $name = $request->name;
+
+        if($name) {
+            $users = User::where('name', 'like', '%'. $name . '%')
+                ->where('id', '!=', $authUserId)
+                ->get();
+
+            return response()->json([
+                'users' => $users,
+                'message' => 'Users fetched succesful!'
+            ], 200);
+        }
+    }
+
+    // ================ USER DETAIL =========
+    public function getUserDetail(Request $request)
+    {
+        $user = User::findOrFail($request->user_id);
+
+        if($user) {
+            return response()->json([
+                'user' => $user,
+                'message' => 'Fetched user detail!',
+            ], 200);
+        }else {
+            return response()->json([
+                'user' => null,
+                'message' => "User not found!"
+            ], 404);
+        }
     }
 }
