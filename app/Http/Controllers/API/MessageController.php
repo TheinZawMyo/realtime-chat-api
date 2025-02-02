@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Message;
 use App\Events\MessageEvent;
+use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
 class MessageController extends Controller
 {
@@ -61,4 +63,52 @@ class MessageController extends Controller
 
         return response()->json(['message' => 'Messages fetched!', 'data' => $messages], 200);
     }
+
+
+    // ================= GET USER LIST WHO HAVE CONNECT ====
+    public function getContactUsers() 
+    {
+        $authUserId = Auth::id();
+        // Get all users who have interacted with the authenticated user
+        $contactUsers = User::whereHas('sentMessages', function ($query) use ($authUserId) {
+                $query->where('receiver_id', $authUserId);
+            })
+            ->orWhereHas('receivedMessages', function ($query) use ($authUserId) {
+                $query->where('sender_id', $authUserId);
+            })
+            ->with(['sentMessages', 'receivedMessages'])
+            ->get();
+
+        // Format the response to include the last message
+        $formattedContacts = $contactUsers->map(function ($user) use ($authUserId) {
+            // Get all messages between the authenticated user and this contact user
+            $messages = Message::where(function ($query) use ($user, $authUserId) {
+                    $query->where('sender_id', $authUserId)
+                        ->where('receiver_id', $user->id);
+                })
+                ->orWhere(function ($query) use ($user, $authUserId) {
+                    $query->where('sender_id', $user->id)
+                        ->where('receiver_id', $authUserId);
+                })
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            return [
+                'contactUserInfo' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'lastMessage' => $messages ? [
+                        'id' => $messages->id,
+                        'message' => $messages->message,
+                        'created_at' => $messages->created_at,
+                    ] : null,
+                ],
+            ];
+        });
+
+        return response()->json($formattedContacts);
+    }
+
+    
 }

@@ -76,16 +76,15 @@ class AuthController extends Controller
         $authUserId = Auth::id();
         $name = $request->name;
 
-        if($name) {
-            $users = User::where('name', 'like', '%'. $name . '%')
-                ->where('id', '!=', $authUserId)
-                ->get();
+        $users = User::where('name', 'like', '%'. $name . '%')
+            ->where('id', '!=', $authUserId)
+            ->get();
 
-            return response()->json([
-                'users' => $users,
-                'message' => 'Users fetched succesful!'
-            ], 200);
-        }
+        return response()->json([
+            'users' => $users,
+            'message' => 'Users fetched succesful!'
+        ], 200);
+        
     }
 
     // ================ USER DETAIL =========
