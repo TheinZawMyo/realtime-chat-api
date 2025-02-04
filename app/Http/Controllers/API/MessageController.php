@@ -47,15 +47,16 @@ class MessageController extends Controller
     public function getMessages(Request $request)
     {
         $request->validate([
-            'sender_id' => 'required|exists:users,id',
-            'receiver_id' => 'required|exists:users,id',
+            'contact_user_id' => 'required|exists:users,id',
         ]);
 
+        $authUserId = Auth::id();
+
         try {
-            $messages = Message::where(function ($query) use ($request) {
-                $query->where('sender_id', $request->sender_id)->where('receiver_id', $request->receiver_id);
-            })->orWhere(function ($query) use ($request) {
-                $query->where('sender_id', $request->receiver_id)->where('receiver_id', $request->sender_id);
+            $messages = Message::where(function ($query) use ($request, $authUserId) {
+                $query->where('sender_id', $request->contact_user_id)->where('receiver_id', $authUserId);
+            })->orWhere(function ($query) use ($request, $authUserId) {
+                $query->where('sender_id', $authUserId)->where('receiver_id', $request->contact_user_id);
             })->orderBy('created_at', 'asc')->get();
         } catch (\Exception $e) {
             return response()->json(['message' => 'Failed to get messages!', 'error' => $e->getMessage()], 500);
@@ -66,7 +67,7 @@ class MessageController extends Controller
 
 
     // ================= GET USER LIST WHO HAVE CONNECT ====
-    public function getContactUsers() 
+    public function getContactUsersAndLastMessage() 
     {
         $authUserId = Auth::id();
         // Get all users who have interacted with the authenticated user
@@ -76,22 +77,29 @@ class MessageController extends Controller
             ->orWhereHas('receivedMessages', function ($query) use ($authUserId) {
                 $query->where('sender_id', $authUserId);
             })
-            ->with(['sentMessages', 'receivedMessages'])
+            // ->with(['sentMessages', 'receivedMessages'])
             ->get();
+
+        
 
         // Format the response to include the last message
         $formattedContacts = $contactUsers->map(function ($user) use ($authUserId) {
             // Get all messages between the authenticated user and this contact user
-            $messages = Message::where(function ($query) use ($user, $authUserId) {
+            $mQuery = Message::query();
+            $mQuery->where(function ($query) use ($user, $authUserId) {
                     $query->where('sender_id', $authUserId)
                         ->where('receiver_id', $user->id);
                 })
                 ->orWhere(function ($query) use ($user, $authUserId) {
                     $query->where('sender_id', $user->id)
                         ->where('receiver_id', $authUserId);
-                })
-                ->orderBy('created_at', 'desc')
-                ->first();
+                });
+
+            $messages = $mQuery->orderBy('created_at', 'desc')->first();
+                
+
+            // Get unread messages
+            $unreadMessagesCount = $this->getUnreadMessagesCount($user->id, $authUserId);
 
             return [
                 'contactUserInfo' => [
@@ -103,11 +111,34 @@ class MessageController extends Controller
                         'message' => $messages->message,
                         'created_at' => $messages->created_at,
                     ] : null,
+                    'unreadMessageCount' => $unreadMessagesCount
                 ],
+                'lastMessageCreatedAt' => $messages ? $messages->created_at : null,
             ];
         });
 
-        return response()->json($formattedContacts);
+        // Sort the contact users by the `created_at` timestamp of their last message
+        $sortedContacts = $formattedContacts->sortByDesc('lastMessageCreatedAt');
+
+        // Remove the temporary sorting key and return the response
+        $finalResponse = $sortedContacts->map(function ($contact) {
+            unset($contact['lastMessageCreatedAt']);
+            return $contact;
+        });
+
+        return response()->json($finalResponse->values());
+    }
+
+    // =============== GET UNREAD MESSAGES ======
+    public function getUnreadMessagesCount($contact_user_id, $authUserId) 
+    {
+        $unreadMessagesCount = Message::where('receiver_id', $authUserId)
+                ->where('is_read', 0)
+                ->where('sender_id', $contact_user_id)
+                ->get()
+                ->count();
+
+        return $unreadMessagesCount;
     }
 
     
