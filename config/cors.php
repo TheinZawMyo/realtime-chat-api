@@ -15,12 +15,21 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'broadcasting/auth'], // Add the required paths
+    // 'paths' => ['*'], // Add the required paths
+    // 'allowed_methods' => ['*'],
+    // 'allowed_origins' => ['*'], // Add your Vue app's origin
+    // 'allowed_origins_patterns' => [],
+    // 'allowed_headers' => ['Content-Type', 'X-Requested-With', 'X-CSRF-TOKEN', 'X-XSRF-TOKEN'],
+    // 'exposed_headers' => ['XSRF-TOKEN'],
+    // 'max_age' => 0,
+    // 'supports_credentials' => true, 
+
+    'paths' => ['api/*', 'sanctum/csrf-cookie'], // Ensure 'sanctum/csrf-cookie' is included
     'allowed_methods' => ['*'],
-    'allowed_origins' => ['http://localhost:5173'], // Add your Vue app's origin
+    'allowed_origins' => ['http://localhost:5173'], // Adjust for production
     'allowed_origins_patterns' => [],
-    'allowed_headers' => ['*'],
-    'exposed_headers' => [],
+    'allowed_headers' => ['*'], // Allow all headers
+    'exposed_headers' => ['Authorization', 'X-XSRF-TOKEN'],
     'max_age' => 0,
-    'supports_credentials' => true, 
+    'supports_credentials' => true,
 ];

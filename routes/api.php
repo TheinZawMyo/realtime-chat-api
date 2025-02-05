@@ -9,7 +9,6 @@ use Laravel\Sanctum\Http\Controllers\CsrfCookieController;
 
 Route::get('/sanctum/csrf-cookie', [CsrfCookieController::class, 'show']);
 
-
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 

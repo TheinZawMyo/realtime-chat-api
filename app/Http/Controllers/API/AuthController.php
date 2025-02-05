@@ -38,18 +38,21 @@ class AuthController extends Controller
     // ==================== LOGIN ====================
     public function login(Request $request)
     {
+        // if (!$request->hasHeader('X-XSRF-TOKEN')) {
+        //     return response()->json(['message' => 'CSRF token missing'], 419);
+        // }
         $request->validate([
             'email' => 'required|email|max:255',
             'password' => 'required|string',
         ]);
 
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user || !\Hash::check($request->password, $user->password)) {
+        if (!Auth::attempt($request->only('email', 'password'))) {
             return response()->json([
                 'message' => 'Invalid credentials',
             ], 401);
         }
+
+        $user = Auth::user();
 
         $token = $user->createToken('realtime-chat')->plainTextToken;
 
